@@ -21,6 +21,7 @@ python-dotenv
 pytest
 pytest-asyncio
 
-# Added from the code block
+# HTTP Client & Data Validation
 httpx
-pydantic requests
+pydantic
+requests
