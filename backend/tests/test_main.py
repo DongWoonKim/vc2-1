@@ -58,4 +58,31 @@ def test_chat_endpoint_missing_fields():
 def test_invalid_endpoint():
     """존재하지 않는 엔드포인트 테스트"""
     response = client.get("/invalid")
-    assert response.status_code == 404 
+    assert response.status_code == 404
+
+
+def test_root_endpoint():
+    """루트 엔드포인트 테스트"""
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "AI Agent Chat API가 실행 중입니다!" in response.json()["message"]
+
+
+def test_health_endpoint():
+    """헬스 체크 엔드포인트 테스트"""
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert data["service"] == "AI Agent Chat API"
+    assert data["version"] == "1.0.0"
+
+
+def test_pr_test_endpoint():
+    """PR 테스트 엔드포인트 테스트"""
+    response = client.get("/test")
+    assert response.status_code == 200
+    data = response.json()
+    assert "PR 테스트가 성공적으로 작동합니다!" in data["message"]
+    assert data["test"] == "GitHub Actions 자동화 테스트"
+    assert data["branch"] == "pr_test" 

@@ -13,11 +13,14 @@ jobs:
       
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     
     - name: 변경된 파일 분석
       id: analyze
       run: |
         echo "Changed files:"
+        git fetch origin ${{ github.base_ref }}
         git diff --name-only origin/${{ github.base_ref }}...HEAD
         
         # 컴포넌트별 담당자 결정

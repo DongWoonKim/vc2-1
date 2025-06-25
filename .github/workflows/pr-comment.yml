@@ -13,10 +13,13 @@ jobs:
       
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     
     - name: PR 정보 분석
       id: pr-info
       run: |
+        git fetch origin ${{ github.base_ref }}
         echo "files_changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | wc -l)" >> $GITHUB_OUTPUT
         echo "lines_added=$(git diff --numstat origin/${{ github.base_ref }}...HEAD | awk '{sum+=$1} END {print sum}')" >> $GITHUB_OUTPUT
         echo "lines_deleted=$(git diff --numstat origin/${{ github.base_ref }}...HEAD | awk '{sum+=$2} END {print sum}')" >> $GITHUB_OUTPUT
