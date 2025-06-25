@@ -91,6 +91,16 @@ async def general_exception_handler(request, exc):
     )
 
 
+@app.get("/test")
+async def test_endpoint():
+    """PR 테스트용 엔드포인트"""
+    return {
+        "message": "PR 테스트가 성공적으로 작동합니다!",
+        "test": "GitHub Actions 자동화 테스트",
+        "branch": "pr_test"
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000) 

@@ -116,15 +116,29 @@ def main():
     """메인 앱 함수"""
     # 페이지 설정
     st.set_page_config(
-        page_title="상품 검색 챗봇",
-        page_icon="🛒",
+        page_title="AI Agent 챗봇",
+        page_icon="🤖",
         layout="wide",
-        initial_sidebar_state="collapsed"
+        initial_sidebar_state="expanded"
     )
     
     # 앱 제목
-    st.title("🛒 상품 검색 챗봇")
-    st.markdown("궁금한 상품에 대해 질문해보세요! AI가 최신 정보를 검색해서 알려드립니다.")
+    st.title("🤖 AI Agent 챗봇")
+    
+    # 사이드바
+    with st.sidebar:
+        st.header("설정")
+        st.info("LangGraph Agent를 활용한 챗봇입니다.")
+        
+        # PR 테스트 섹션 추가
+        st.markdown("---")
+        st.subheader("🧪 PR 테스트")
+        if st.button("테스트 실행"):
+            st.success("✅ PR 테스트 성공!")
+            st.balloons()
+
+    # 챗봇 인터페이스 기본 구조
+    st.header("채팅")
     
     # 세션 상태 초기화
     init_session_state()
@@ -133,8 +147,13 @@ def main():
     display_chat_messages()
     
     # 사용자 입력 처리
-    if user_input := st.chat_input("상품에 대해 질문해보세요..."):
+    if user_input := st.chat_input("메시지를 입력하세요..."):
         handle_user_input(user_input)
+
+    # PR 테스트 상태 표시
+    st.markdown("---")
+    st.success("🚀 PR 테스트 브랜치에서 실행 중")
+    st.info("📋 GitHub Actions 자동화 테스트를 위한 변경사항이 포함되어 있습니다.")
 
 
 if __name__ == "__main__":
