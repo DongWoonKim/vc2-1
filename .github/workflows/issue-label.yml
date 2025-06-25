@@ -1,0 +1,144 @@
+name: 이슈 라벨 자동 등록
+
+on:
+  issues:
+    types: [opened, reopened]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+      
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: 이슈 분석 및 라벨 결정
+      id: analyze
+      run: |
+        title="${{ github.event.issue.title }}"
+        body="${{ github.event.issue.body }}"
+        
+        # 이슈 타입 라벨
+        if echo "$title" | grep -qi "^\[bug\]\|\bbug\b"; then
+          echo "type_bug=true" >> $GITHUB_OUTPUT
+        elif echo "$title" | grep -qi "^\[feature\]\|\bfeature\b"; then
+          echo "type_feature=true" >> $GITHUB_OUTPUT
+        elif echo "$title" | grep -qi "^\[question\]\|\bquestion\b"; then
+          echo "type_question=true" >> $GITHUB_OUTPUT
+        elif echo "$title" | grep -qi "^\[enhancement\]\|\benhancement\b"; then
+          echo "type_enhancement=true" >> $GITHUB_OUTPUT
+        elif echo "$title" | grep -qi "^\[docs\]\|\bdocs\b\|\bdocumentation\b"; then
+          echo "type_documentation=true" >> $GITHUB_OUTPUT
+        fi
+        
+        # 우선순위 라벨
+        if echo "$title $body" | grep -qi "urgent\|critical\|블로킹\|긴급\|심각"; then
+          echo "priority=critical" >> $GITHUB_OUTPUT
+        elif echo "$title $body" | grep -qi "important\|중요\|빠른"; then
+          echo "priority=high" >> $GITHUB_OUTPUT
+        elif echo "$title $body" | grep -qi "normal\|일반"; then
+          echo "priority=medium" >> $GITHUB_OUTPUT
+        else
+          echo "priority=low" >> $GITHUB_OUTPUT
+        fi
+        
+        # 컴포넌트 라벨
+        if echo "$title $body" | grep -qi "backend\|api\|server\|fastapi\|langraph"; then
+          echo "component_backend=true" >> $GITHUB_OUTPUT
+        fi
+        if echo "$title $body" | grep -qi "frontend\|ui\|streamlit\|interface"; then
+          echo "component_frontend=true" >> $GITHUB_OUTPUT
+        fi
+        if echo "$title $body" | grep -qi "docs\|documentation\|readme\|guide"; then
+          echo "component_docs=true" >> $GITHUB_OUTPUT
+        fi
+        
+        # 난이도 추정
+        if echo "$title $body" | grep -qi "easy\|simple\|쉬운\|간단"; then
+          echo "difficulty=easy" >> $GITHUB_OUTPUT
+        elif echo "$title $body" | grep -qi "hard\|complex\|어려운\|복잡"; then
+          echo "difficulty=hard" >> $GITHUB_OUTPUT
+        else
+          echo "difficulty=medium" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: 라벨 적용
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const labels = [];
+          
+          // 타입 라벨
+          if ('${{ steps.analyze.outputs.type_bug }}' === 'true') {
+            labels.push('type/bug');
+          }
+          if ('${{ steps.analyze.outputs.type_feature }}' === 'true') {
+            labels.push('type/feature');
+          }
+          if ('${{ steps.analyze.outputs.type_question }}' === 'true') {
+            labels.push('type/question');
+          }
+          if ('${{ steps.analyze.outputs.type_enhancement }}' === 'true') {
+            labels.push('type/enhancement');
+          }
+          if ('${{ steps.analyze.outputs.type_documentation }}' === 'true') {
+            labels.push('type/documentation');
+          }
+          
+          // 우선순위 라벨
+          const priority = '${{ steps.analyze.outputs.priority }}';
+          labels.push(`priority/${priority}`);
+          
+          // 컴포넌트 라벨
+          if ('${{ steps.analyze.outputs.component_backend }}' === 'true') {
+            labels.push('component/backend');
+          }
+          if ('${{ steps.analyze.outputs.component_frontend }}' === 'true') {
+            labels.push('component/frontend');
+          }
+          if ('${{ steps.analyze.outputs.component_docs }}' === 'true') {
+            labels.push('component/docs');
+          }
+          
+          // 난이도 라벨
+          const difficulty = '${{ steps.analyze.outputs.difficulty }}';
+          labels.push(`difficulty/${difficulty}`);
+          
+          // 상태 라벨
+          labels.push('status/open');
+          
+          console.log('적용할 라벨:', labels);
+          
+          // 라벨 적용
+          if (labels.length > 0) {
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: labels
+            });
+          }
+          
+          // 라벨 적용 완료 댓글
+          const comment = `## 🏷️ 자동 라벨링 완료
+          
+          **적용된 라벨**: ${labels.map(l => `\`${l}\``).join(', ')}
+          
+          **라벨 설명**:
+          - **타입**: 이슈의 종류 (bug, feature, question 등)
+          - **우선순위**: 처리 우선순위 (critical, high, medium, low)
+          - **컴포넌트**: 관련 컴포넌트 (backend, frontend, docs)
+          - **난이도**: 예상 구현 난이도 (easy, medium, hard)
+          - **상태**: 현재 진행 상태 (open, in-progress, resolved)
+          
+          ---
+          *라벨은 이슈 내용을 기반으로 자동 분석되었습니다. 필요시 수동으로 수정 가능합니다.*`;
+          
+          await github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          }); 

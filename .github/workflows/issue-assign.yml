@@ -1,0 +1,147 @@
+name: 이슈 자동 할당
+
+on:
+  issues:
+    types: [opened, reopened]
+
+jobs:
+  assign:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+      
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: 이슈 분석 및 할당자 결정
+      id: analyze
+      run: |
+        title="${{ github.event.issue.title }}"
+        body="${{ github.event.issue.body }}"
+        
+        # 이슈 타입 분석
+        if echo "$title" | grep -qi "^\[bug\]\|\bbug\b"; then
+          echo "type=bug" >> $GITHUB_OUTPUT
+          echo "assignee=maintainer" >> $GITHUB_OUTPUT
+        elif echo "$title" | grep -qi "^\[feature\]\|\bfeature\b"; then
+          echo "type=feature" >> $GITHUB_OUTPUT
+          echo "assignee=product-owner" >> $GITHUB_OUTPUT
+        elif echo "$title" | grep -qi "^\[question\]\|\bquestion\b"; then
+          echo "type=question" >> $GITHUB_OUTPUT
+          echo "assignee=maintainer" >> $GITHUB_OUTPUT
+        elif echo "$title" | grep -qi "^\[enhancement\]\|\benhancement\b"; then
+          echo "type=enhancement" >> $GITHUB_OUTPUT
+          echo "assignee=maintainer" >> $GITHUB_OUTPUT
+        elif echo "$title" | grep -qi "^\[docs\]\|\bdocs\b\|\bdocumentation\b"; then
+          echo "type=documentation" >> $GITHUB_OUTPUT
+          echo "assignee=docs-team" >> $GITHUB_OUTPUT
+        else
+          echo "type=general" >> $GITHUB_OUTPUT
+          echo "assignee=maintainer" >> $GITHUB_OUTPUT
+        fi
+        
+        # 컴포넌트 기반 할당자 결정
+        if echo "$title $body" | grep -qi "backend\|api\|server\|fastapi"; then
+          echo "component=backend" >> $GITHUB_OUTPUT
+          echo "assignee=backend-team" >> $GITHUB_OUTPUT
+        elif echo "$title $body" | grep -qi "frontend\|ui\|streamlit"; then
+          echo "component=frontend" >> $GITHUB_OUTPUT
+          echo "assignee=frontend-team" >> $GITHUB_OUTPUT
+        elif echo "$title $body" | grep -qi "docs\|documentation\|readme"; then
+          echo "component=docs" >> $GITHUB_OUTPUT
+          echo "assignee=docs-team" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: 이슈 할당 실행
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const issueType = '${{ steps.analyze.outputs.type }}';
+          const assigneeType = '${{ steps.analyze.outputs.assignee }}';
+          const component = '${{ steps.analyze.outputs.component }}';
+          
+          // 실제 GitHub 사용자명으로 매핑 (환경에 맞게 수정 필요)
+          const assigneeMap = {
+            'maintainer': ['${{ github.repository_owner }}'],
+            'product-owner': ['${{ github.repository_owner }}'],
+            'backend-team': ['${{ github.repository_owner }}'], // 실제 백엔드 팀원들로 변경
+            'frontend-team': ['${{ github.repository_owner }}'], // 실제 프론트엔드 팀원들로 변경
+            'docs-team': ['${{ github.repository_owner }}'] // 실제 문서팀원들로 변경
+          };
+          
+          const assignees = assigneeMap[assigneeType] || assigneeMap['maintainer'];
+          
+          // 우선순위에 따른 할당자 선택 (여러 명일 경우 랜덤 선택)
+          const selectedAssignee = assignees[Math.floor(Math.random() * assignees.length)];
+          
+          try {
+            // 이슈 할당
+            await github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              assignees: [selectedAssignee]
+            });
+            
+            console.log(`이슈가 ${selectedAssignee}에게 할당되었습니다.`);
+            
+            // 할당 완료 댓글
+            const assignmentComment = `## 👥 담당자 자동 할당 완료
+            
+            **할당된 담당자**: @${selectedAssignee}
+            **할당 기준**: ${issueType} 타입, ${component || 'general'} 컴포넌트
+            
+            ### 📋 담당자 역할
+            - 이슈 내용 검토 및 분석
+            - 해결 방안 수립
+            - 구현 또는 답변 제공
+            - 진행 상황 업데이트
+            
+            ### 🔄 다음 단계
+            1. **담당자 검토**: 이슈 내용 확인 및 분석
+            2. **라벨 추가**: 상세 분류를 위한 라벨 추가
+            3. **일정 수립**: 해결 예상 시간 안내
+            4. **진행 상황 공유**: 정기적인 업데이트
+            
+            ---
+            *담당자 변경이 필요하거나 추가 정보가 필요하면 댓글로 남겨주세요.*`;
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: assignmentComment
+            });
+            
+          } catch (error) {
+            console.error('할당 실패:', error.message);
+            
+            // 할당 실패 댓글
+            const errorComment = `## ❌ 자동 할당 실패
+            
+            담당자 자동 할당 중 오류가 발생했습니다.
+            **오류**: ${error.message}
+            
+            **수동 할당 방법**:
+            1. 오른쪽 사이드바에서 "Assignees" 클릭
+            2. 적절한 담당자 선택
+            3. 또는 댓글에서 @username 멘션
+            
+            **추천 담당자**:
+            - 버그 이슈: @maintainer
+            - 기능 요청: @product-owner  
+            - 문서 이슈: @docs-team
+            - 백엔드 관련: @backend-team
+            - 프론트엔드 관련: @frontend-team
+            
+            ---
+            *시스템 관리자에게 문의하여 자동 할당 기능을 점검해주세요.*`;
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: errorComment
+            });
+          } 

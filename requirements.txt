@@ -1,0 +1,26 @@
+# FastAPI Backend
+fastapi
+uvicorn
+
+# LangGraph AI Agent
+langgraph
+langchain
+langchain-community
+langchain-google-genai
+
+# Tools
+duckduckgo-search
+
+# Streamlit Frontend  
+streamlit
+
+# Environment Management
+python-dotenv
+
+# Testing
+pytest
+pytest-asyncio
+
+# Added from the code block
+httpx
+pydantic requests

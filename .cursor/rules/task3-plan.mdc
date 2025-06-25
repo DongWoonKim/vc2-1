@@ -1,0 +1,86 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# TASK-003 개발 계획
+
+LangGraph Agent 구현 - React Agent 기반 상품 검색 에이전트
+
+## 구현 항목
+
+### 1. Gemini LLM 설정
+- Gemini-2.5-flash-preview-05-20 모델 초기화
+- Google API 키 환경변수 설정
+- LangChain Gemini 연동
+
+### 2. DuckDuckGo Search Tool 설정
+- LangChain DuckDuckGo Search Tool 초기화
+- 상품 검색에 특화된 검색 쿼리 설정
+- 검색 결과 처리 로직
+
+### 3. LangGraph React Agent 생성
+- create_react_agent 사용하여 Pre-built Agent 구현
+- Single Turn 방식 (메모리 없음)
+- Tool과 LLM 연동
+
+### 4. Agent 시스템 프롬프트 설정
+- 상품 검색 전문가 역할 정의
+- 검색 결과 분석 및 정리 지침
+- 응답 형식 가이드라인
+
+### 5. FastAPI 엔드포인트 확장
+- Chat API에 Agent 로직 연동
+- 동기 방식으로 Agent 실행
+- 검색 결과 응답 구조화
+
+### 6. 환경 변수 설정
+- Google API Key 설정
+- LangSmith API Key 설정 (선택사항)
+- 환경 설정 검증
+
+### 7. Agent 실행 플로우 구현
+- 사용자 요청 수신
+- Agent 실행 (Tool 사용)
+- 검색 결과 LLM 처리
+- 최종 응답 생성
+
+## 기술 스택 및 라이브러리
+
+### Agent Framework
+- LangGraph: 에이전트 워크플로우 관리
+- langgraph.prebuilt: React Agent 구현
+
+### LLM
+- langchain-google-genai: Gemini LLM 연동
+- Gemini-2.5-flash-preview-05-20: LLM 모델
+
+### Search Tool
+- langchain-community: DuckDuckGo 검색 도구
+- DuckDuckGoSearchResults: 웹 검색 실행
+
+### 모니터링 (선택사항)
+- LangSmith: Agent 실행 추적 및 디버깅
+
+### 개발 언어
+- Python 3.11
+
+## 개발 순서
+
+1. Gemini LLM 설정
+2. DuckDuckGo Search Tool 설정  
+3. 환경 변수 설정
+4. Agent 시스템 프롬프트 설정
+5. LangGraph React Agent 생성
+6. Agent 실행 플로우 구현
+7. FastAPI 엔드포인트 확장
+
+## 참조 문서
+- [@development-tasks.mdc](mdc:development-tasks.mdc): 전체 개발 태스크 정보
+- [@tech-stack.mdc](mdc:tech-stack.mdc): 기술 스택 세부사항
+
+## 기술 문서 참조
+- LangGraph React Agent: create_react_agent 사용법
+- Gemini LLM 연동: langchain-google-genai 활용
+- DuckDuckGo Search: LangChain 커뮤니티 도구 사용
+

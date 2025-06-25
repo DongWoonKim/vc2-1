@@ -1,0 +1,143 @@
+name: PR 라벨 자동 등록
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+      
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: 변경사항 분석
+      id: analyze
+      run: |
+        echo "=== 변경된 파일 분석 ==="
+        git diff --name-only origin/${{ github.base_ref }}...HEAD
+        
+        # 컴포넌트 라벨
+        if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "^backend/"; then
+          echo "component_backend=true" >> $GITHUB_OUTPUT
+        fi
+        if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "^frontend/"; then
+          echo "component_frontend=true" >> $GITHUB_OUTPUT
+        fi
+        if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "\.md$\|^docs/"; then
+          echo "component_docs=true" >> $GITHUB_OUTPUT
+        fi
+        
+        # 타입 라벨
+        if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "test_.*\.py$\|_test\.py$"; then
+          echo "type_test=true" >> $GITHUB_OUTPUT
+        fi
+        
+        # 변경사항 크기 분석
+        files_changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | wc -l)
+        lines_changed=$(git diff --numstat origin/${{ github.base_ref }}...HEAD | awk '{sum+=$1+$2} END {print sum}')
+        
+        echo "files_changed=$files_changed" >> $GITHUB_OUTPUT
+        echo "lines_changed=$lines_changed" >> $GITHUB_OUTPUT
+        
+        # 크기 라벨 결정
+        if [ "$lines_changed" -lt 50 ]; then
+          echo "size=S" >> $GITHUB_OUTPUT
+        elif [ "$lines_changed" -lt 200 ]; then
+          echo "size=M" >> $GITHUB_OUTPUT
+        elif [ "$lines_changed" -lt 500 ]; then
+          echo "size=L" >> $GITHUB_OUTPUT
+        else
+          echo "size=XL" >> $GITHUB_OUTPUT
+        fi
+        
+        # PR 제목 기반 타입 분석
+        title="${{ github.event.pull_request.title }}"
+        if echo "$title" | grep -qi "^\[feat\]"; then
+          echo "type_feature=true" >> $GITHUB_OUTPUT
+        elif echo "$title" | grep -qi "^\[fix\]"; then
+          echo "type_bugfix=true" >> $GITHUB_OUTPUT
+        elif echo "$title" | grep -qi "^\[docs\]"; then
+          echo "type_docs=true" >> $GITHUB_OUTPUT
+        elif echo "$title" | grep -qi "^\[refactor\]"; then
+          echo "type_refactor=true" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: 라벨 적용
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const labels = [];
+          
+          // 컴포넌트 라벨
+          if ('${{ steps.analyze.outputs.component_backend }}' === 'true') {
+            labels.push('component/backend');
+          }
+          if ('${{ steps.analyze.outputs.component_frontend }}' === 'true') {
+            labels.push('component/frontend');
+          }
+          if ('${{ steps.analyze.outputs.component_docs }}' === 'true') {
+            labels.push('component/docs');
+          }
+          
+          // 타입 라벨
+          if ('${{ steps.analyze.outputs.type_feature }}' === 'true') {
+            labels.push('type/feature');
+          }
+          if ('${{ steps.analyze.outputs.type_bugfix }}' === 'true') {
+            labels.push('type/bugfix');
+          }
+          if ('${{ steps.analyze.outputs.type_docs }}' === 'true') {
+            labels.push('type/docs');
+          }
+          if ('${{ steps.analyze.outputs.type_refactor }}' === 'true') {
+            labels.push('type/refactor');
+          }
+          if ('${{ steps.analyze.outputs.type_test }}' === 'true') {
+            labels.push('type/test');
+          }
+          
+          // 크기 라벨
+          const size = '${{ steps.analyze.outputs.size }}';
+          labels.push(`size/${size}`);
+          
+          // 상태 라벨
+          labels.push('status/needs-review');
+          
+          // 우선순위 라벨 (기본값)
+          labels.push('priority/medium');
+          
+          console.log('적용할 라벨:', labels);
+          
+          // 라벨 적용
+          if (labels.length > 0) {
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: labels
+            });
+          }
+          
+          // 댓글로 라벨 정보 알림
+          const comment = `## 🏷️ 자동 라벨링 완료
+          
+          **적용된 라벨**: ${labels.map(l => `\`${l}\``).join(', ')}
+          
+          **분석 결과**:
+          - 변경된 파일: ${{ steps.analyze.outputs.files_changed }}개
+          - 변경된 라인: ${{ steps.analyze.outputs.lines_changed }}줄
+          - 크기: ${{ steps.analyze.outputs.size }}
+          
+          ---
+          *라벨은 변경사항을 기반으로 자동 할당되었습니다. 필요시 수동으로 수정 가능합니다.*`;
+          
+          await github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          }); 

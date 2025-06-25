@@ -1,0 +1,87 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# TASK-004 개발 계획
+
+Streamlit 프론트엔드 구현 - 챗봇 인터페이스 및 상품 검색 결과 표시
+
+## 구현 항목
+
+### 1. 기본 Streamlit 앱 구조 설정
+- Streamlit 앱 초기화
+- 페이지 제목 및 설정
+- 세션 상태 초기화
+
+### 2. 채팅 히스토리 관리
+- st.session_state를 활용한 메시지 저장
+- 대화 기록 유지 및 표시
+- 메시지 역할별 구분 (user/assistant)
+
+### 3. 채팅 인터페이스 구현
+- st.chat_input으로 사용자 입력 받기
+- st.chat_message로 메시지 표시
+- 실시간 대화 흐름 관리
+
+### 4. FastAPI 백엔드 연동
+- requests 라이브러리로 HTTP 통신
+- Chat API 엔드포인트 호출
+- 응답 데이터 처리 및 표시
+
+### 5. 상품 검색 결과 표시
+- LangGraph Agent 검색 결과 렌더링
+- 마크다운 형식 응답 처리
+- 구조화된 상품 정보 표시
+
+### 6. 에러 핸들링 및 로딩 상태
+- API 호출 실패 시 에러 메시지 표시
+- 로딩 스피너 및 상태 표시
+- 네트워크 오류 처리
+
+### 7. UI/UX 개선
+- 채팅 인터페이스 스타일링
+- 반응형 레이아웃 구성
+- 사용자 경험 최적화
+
+### 8. 환경 설정 및 배포 준비
+- 환경 변수 설정
+- 포트 설정 (8501)
+- 개발/운영 환경 분리
+
+## 기술 스택 및 라이브러리
+
+### 프론트엔드 프레임워크
+- Streamlit: 웹 애플리케이션 프레임워크
+
+### HTTP 통신
+- requests: HTTP 클라이언트 라이브러리
+
+### UI 컴포넌트
+- st.chat_input: 사용자 입력 위젯
+- st.chat_message: 메시지 표시 컨테이너
+- st.session_state: 세션 상태 관리
+- st.markdown: 마크다운 렌더링
+
+### 개발 언어
+- Python 3.11
+
+### 추가 라이브러리
+- json: JSON 데이터 처리
+- time: 로딩 상태 관리
+
+## 개발 순서
+
+1. 기본 Streamlit 앱 구조 설정
+2. 채팅 히스토리 관리 구현
+3. 채팅 인터페이스 구현
+4. FastAPI 백엔드 연동
+5. 상품 검색 결과 표시
+6. 에러 핸들링 및 로딩 상태
+7. UI/UX 개선
+8. 환경 설정 및 배포 준비
+
+## 참조 문서
+- [@development-tasks.mdc](mdc:development-tasks.mdc): 전체 개발 태스크 정보
+- [@tech-stack.mdc](mdc:tech-stack.mdc): 기술 스택 상세 정보
+

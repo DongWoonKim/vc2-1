@@ -1,0 +1,140 @@
+name: PR 코드 리뷰 자동 등록
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  auto-review:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+      
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Python 환경 설정
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: 코드 분석 도구 설치
+      run: |
+        pip install flake8 black isort mypy
+        
+    - name: 코드 품질 검사
+      id: quality
+      run: |
+        echo "=== Code Quality Analysis ===" > analysis.txt
+        
+        # Flake8 검사
+        echo "## Flake8 (PEP 8 준수)" >> analysis.txt
+        if flake8 --max-line-length=88 --extend-ignore=E203,W503 . > flake8.txt 2>&1; then
+          echo "✅ PEP 8 준수: 문제 없음" >> analysis.txt
+        else
+          echo "❌ PEP 8 위반 발견:" >> analysis.txt
+          head -20 flake8.txt >> analysis.txt
+        fi
+        
+        # Black 포맷팅 검사
+        echo "" >> analysis.txt
+        echo "## Black (코드 포맷팅)" >> analysis.txt
+        if black --check --diff . > black.txt 2>&1; then
+          echo "✅ 코드 포맷팅: 문제 없음" >> analysis.txt
+        else
+          echo "❌ 포맷팅 개선 필요:" >> analysis.txt
+          echo "\`\`\`" >> analysis.txt
+          head -20 black.txt >> analysis.txt
+          echo "\`\`\`" >> analysis.txt
+        fi
+        
+        # Import 정렬 검사
+        echo "" >> analysis.txt
+        echo "## isort (Import 정렬)" >> analysis.txt
+        if isort --check-only --diff . > isort.txt 2>&1; then
+          echo "✅ Import 정렬: 문제 없음" >> analysis.txt
+        else
+          echo "❌ Import 정렬 개선 필요:" >> analysis.txt
+          head -10 isort.txt >> analysis.txt
+        fi
+        
+        # 복잡도 분석 (간단한 라인 수 기반)
+        echo "" >> analysis.txt
+        echo "## 복잡도 분석" >> analysis.txt
+        complex_files=$(find . -name "*.py" -not -path "./venv/*" -not -path "./__pycache__/*" -exec wc -l {} \; | awk '$1 > 200 {print $2}' | head -5)
+        if [ -z "$complex_files" ]; then
+          echo "✅ 복잡도: 문제 없음 (모든 파일이 200줄 이하)" >> analysis.txt
+        else
+          echo "❌ 큰 파일 발견 (200줄 초과):" >> analysis.txt
+          echo "$complex_files" >> analysis.txt
+        fi
+        
+        # 보안 검사 (간단한 패턴 매칭)
+        echo "" >> analysis.txt
+        echo "## 보안 검사" >> analysis.txt
+        security_issues=$(grep -r "eval\|exec\|os\.system\|subprocess\.call" --include="*.py" . 2>/dev/null | head -5)
+        if [ -z "$security_issues" ]; then
+          echo "✅ 보안: 문제 없음" >> analysis.txt
+        else
+          echo "❌ 잠재적 보안 이슈:" >> analysis.txt
+          echo "$security_issues" >> analysis.txt
+        fi
+        
+        # 분석 결과 저장
+        cat analysis.txt
+        
+        # 전체 점수 계산 (간단한 로직)
+        score=100
+        if grep -q "❌" analysis.txt; then
+          score=80
+        fi
+        echo "score=$score" >> $GITHUB_OUTPUT
+        
+    - name: 코드 리뷰 댓글 생성
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const analysis = fs.readFileSync('analysis.txt', 'utf8');
+          const score = '${{ steps.quality.outputs.score }}';
+          
+          const getScoreEmoji = (score) => {
+            if (score >= 95) return '🏆';
+            if (score >= 90) return '🥇';
+            if (score >= 80) return '🥈';
+            if (score >= 70) return '🥉';
+            return '⚠️';
+          };
+          
+          const review = `## 🤖 자동 코드 리뷰 리포트
+          
+          ### ${getScoreEmoji(score)} 전체 점수: ${score}/100
+          
+          ${analysis}
+          
+          ### 📋 리뷰 체크리스트
+          - [ ] **기능성**: 코드가 의도한 대로 작동하는가?
+          - [ ] **가독성**: 코드가 이해하기 쉬운가?
+          - [ ] **성능**: 성능상 문제가 없는가?
+          - [ ] **보안**: 보안 취약점이 없는가?
+          - [ ] **테스트**: 적절한 테스트가 포함되어 있는가?
+          
+          ### 💡 개선 제안
+          ${score < 90 ? `
+          - 코드 품질 개선을 위해 위의 지적사항을 확인해주세요
+          - \`black .\` 명령으로 포맷팅을 자동 수정할 수 있습니다
+          - \`isort .\` 명령으로 import 정렬을 자동 수정할 수 있습니다
+          ` : '- 코드 품질이 우수합니다! 👍'}
+          
+          ---
+          *이 리뷰는 자동화된 분석 도구를 통해 생성되었습니다. 추가적인 수동 리뷰가 필요할 수 있습니다.*`;
+          
+          await github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: review
+          }); 

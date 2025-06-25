@@ -1,0 +1,193 @@
+name: 이슈 댓글 자동 등록
+
+on:
+  issues:
+    types: [opened, reopened]
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+      
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: 이슈 분석
+      id: analyze
+      run: |
+        # 이슈 제목에서 타입 추출
+        title="${{ github.event.issue.title }}"
+        body="${{ github.event.issue.body }}"
+        
+        if echo "$title" | grep -qi "^\[bug\]\|\bbug\b"; then
+          echo "type=bug" >> $GITHUB_OUTPUT
+        elif echo "$title" | grep -qi "^\[feature\]\|\bfeature\b"; then
+          echo "type=feature" >> $GITHUB_OUTPUT
+        elif echo "$title" | grep -qi "^\[question\]\|\bquestion\b"; then
+          echo "type=question" >> $GITHUB_OUTPUT
+        elif echo "$title" | grep -qi "^\[enhancement\]\|\benhancement\b"; then
+          echo "type=enhancement" >> $GITHUB_OUTPUT
+        elif echo "$title" | grep -qi "^\[docs\]\|\bdocs\b\|\bdocumentation\b"; then
+          echo "type=documentation" >> $GITHUB_OUTPUT
+        else
+          echo "type=general" >> $GITHUB_OUTPUT
+        fi
+        
+        # 우선순위 결정 (키워드 기반)
+        if echo "$title $body" | grep -qi "urgent\|critical\|블로킹\|긴급"; then
+          echo "priority=high" >> $GITHUB_OUTPUT
+        elif echo "$title $body" | grep -qi "important\|중요"; then
+          echo "priority=medium" >> $GITHUB_OUTPUT
+        else
+          echo "priority=low" >> $GITHUB_OUTPUT
+        fi
+        
+        # 컴포넌트 추정
+        if echo "$title $body" | grep -qi "backend\|api\|server\|fastapi"; then
+          echo "component=backend" >> $GITHUB_OUTPUT
+        elif echo "$title $body" | grep -qi "frontend\|ui\|streamlit"; then
+          echo "component=frontend" >> $GITHUB_OUTPUT
+        elif echo "$title $body" | grep -qi "docs\|documentation\|readme"; then
+          echo "component=docs" >> $GITHUB_OUTPUT
+        else
+          echo "component=general" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: 타입별 환영 댓글 생성
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const issueType = '${{ steps.analyze.outputs.type }}';
+          const priority = '${{ steps.analyze.outputs.priority }}';
+          const component = '${{ steps.analyze.outputs.component }}';
+          const author = '${{ github.event.issue.user.login }}';
+          
+          const typeMessages = {
+            bug: {
+              emoji: '🐛',
+              title: '버그 리포트',
+              message: `안녕하세요 @${author}님! 버그 리포트를 제출해주셔서 감사합니다.
+              
+              **다음 정보를 확인해주세요:**
+              - [ ] 재현 방법이 명확하게 기술되어 있는지
+              - [ ] 예상 동작과 실제 동작이 구분되어 있는지
+              - [ ] 실행 환경 정보가 포함되어 있는지
+              - [ ] 오류 메시지나 로그가 있다면 포함되어 있는지
+              
+              **처리 과정:**
+              1. 이슈 확인 및 분류
+              2. 재현 테스트
+              3. 버그 수정 및 테스트
+              4. 수정 내용 배포`
+            },
+            feature: {
+              emoji: '✨',
+              title: '기능 요청',
+              message: `안녕하세요 @${author}님! 새로운 기능 제안을 해주셔서 감사합니다.
+              
+              **검토 사항:**
+              - [ ] 기능의 목적과 필요성
+              - [ ] 구현 방법과 기술적 요구사항
+              - [ ] 사용자 경험에 미치는 영향
+              - [ ] 기존 기능과의 호환성
+              
+              **개발 과정:**
+              1. 기능 요구사항 분석
+              2. 설계 및 구현 계획 수립
+              3. 개발 및 테스트
+              4. 문서화 및 배포`
+            },
+            question: {
+              emoji: '❓',
+              title: '질문',
+              message: `안녕하세요 @${author}님! 질문을 남겨주셔서 감사합니다.
+              
+              **답변 과정:**
+              - 질문을 검토하고 필요한 정보를 수집합니다
+              - 관련 문서나 예제를 찾아 제공합니다
+              - 추가 질문이 있다면 언제든지 댓글로 남겨주세요
+              
+              **관련 리소스:**
+              - 📖 프로젝트 문서: README.md
+              - 🔧 설정 가이드: SETUP_GUIDE.md
+              - 💬 추가 질문은 댓글로 남겨주세요`
+            },
+            enhancement: {
+              emoji: '🚀',
+              title: '개선 제안',
+              message: `안녕하세요 @${author}님! 개선 제안을 해주셔서 감사합니다.
+              
+              **검토 내용:**
+              - [ ] 현재 구조의 문제점 분석
+              - [ ] 제안된 개선 방안의 타당성
+              - [ ] 구현 복잡도와 효과 분석
+              - [ ] 기존 기능에 미치는 영향
+              
+              **개선 과정:**
+              1. 제안 내용 검토
+              2. 구현 방안 검토
+              3. 개발 우선순위 결정
+              4. 구현 및 테스트`
+            },
+            documentation: {
+              emoji: '📚',
+              title: '문서 관련',
+              message: `안녕하세요 @${author}님! 문서 관련 이슈를 제출해주셔서 감사합니다.
+              
+              **문서 개선 영역:**
+              - [ ] 정확성: 내용이 최신 상태인지 확인
+              - [ ] 완성도: 누락된 정보 추가
+              - [ ] 가독성: 이해하기 쉬운 설명
+              - [ ] 예제: 실용적인 사용 예시
+              
+              **개선 과정:**
+              1. 문서 내용 검토
+              2. 필요한 정보 수집
+              3. 문서 업데이트
+              4. 검토 및 반영`
+            },
+            general: {
+              emoji: '💬',
+              title: '일반 이슈',
+              message: `안녕하세요 @${author}님! 이슈를 제출해주셔서 감사합니다.
+              
+              **처리 과정:**
+              1. 이슈 내용 검토 및 분류
+              2. 담당자 할당
+              3. 해결 방안 검토
+              4. 구현 및 피드백`
+            }
+          };
+          
+          const typeInfo = typeMessages[issueType] || typeMessages.general;
+          const priorityEmoji = priority === 'high' ? '🔥' : priority === 'medium' ? '⚡' : '📝';
+          
+          const comment = `## ${typeInfo.emoji} ${typeInfo.title} 접수 완료
+          
+          ${typeInfo.message}
+          
+          ### 📊 이슈 분석 결과
+          - **타입**: \`${issueType}\`
+          - **우선순위**: ${priorityEmoji} \`${priority}\`
+          - **컴포넌트**: \`${component}\`
+          - **담당팀**: 자동 할당 예정
+          
+          ### 🔄 진행 상황
+          - [x] 이슈 접수 완료
+          - [ ] 담당자 할당
+          - [ ] 분석 및 검토
+          - [ ] 해결 방안 수립
+          - [ ] 구현 및 테스트
+          - [ ] 완료 및 피드백
+          
+          ---
+          *이 댓글은 자동으로 생성되었습니다. 추가 정보가 필요하면 댓글로 남겨주세요.*`;
+          
+          await github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          }); 
