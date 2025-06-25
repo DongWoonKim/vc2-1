@@ -16,9 +16,12 @@ jobs:
     
     - name: 이슈 분석 및 라벨 결정
       id: analyze
+      env:
+        ISSUE_TITLE: ${{ github.event.issue.title }}
+        ISSUE_BODY: ${{ github.event.issue.body }}
       run: |
-        title="${{ github.event.issue.title }}"
-        body="${{ github.event.issue.body }}"
+        title="$ISSUE_TITLE"
+        body="$ISSUE_BODY"
         
         # 이슈 타입 라벨
         if echo "$title" | grep -qi "^\[bug\]\|\bbug\b"; then

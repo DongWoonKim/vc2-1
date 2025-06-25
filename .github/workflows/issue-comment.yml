@@ -16,10 +16,13 @@ jobs:
     
     - name: 이슈 분석
       id: analyze
+      env:
+        ISSUE_TITLE: ${{ github.event.issue.title }}
+        ISSUE_BODY: ${{ github.event.issue.body }}
       run: |
-        # 이슈 제목에서 타입 추출
-        title="${{ github.event.issue.title }}"
-        body="${{ github.event.issue.body }}"
+        # 이슈 제목에서 타입 추출 (환경 변수 사용)
+        title="$ISSUE_TITLE"
+        body="$ISSUE_BODY"
         
         if echo "$title" | grep -qi "^\[bug\]\|\bbug\b"; then
           echo "type=bug" >> $GITHUB_OUTPUT
