@@ -23,6 +23,8 @@ class HealthResponse(BaseModel):
     """헬스체크 응답 모델"""
     status: str = Field(..., description="서버 상태")
     message: str = Field(..., description="상태 메시지")
+    service: Optional[str] = Field(None, description="서비스 이름")
+    version: Optional[str] = Field(None, description="서비스 버전")
 
 
 class ErrorResponse(BaseModel):

@@ -30,17 +30,19 @@ async def read_root():
     """루트 엔드포인트 - 헬스체크로 리다이렉트"""
     return HealthResponse(
         status="healthy",
-        message="FastAPI server is running"
+        message="AI Agent Chat API가 실행 중입니다!"
     )
 
 
-@app.get("/health", response_model=HealthResponse)
+@app.get("/health")
 async def health_check():
     """헬스체크 엔드포인트"""
-    return HealthResponse(
-        status="healthy",
-        message="FastAPI server is running"
-    )
+    return {
+        "status": "healthy",
+        "service": "AI Agent Chat API",
+        "version": "1.0.0",
+        "message": "FastAPI server is running"
+    }
 
 
 @app.post("/chat", response_model=ChatResponse)

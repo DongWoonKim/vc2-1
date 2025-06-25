@@ -12,7 +12,7 @@ def test_app_initialization():
     
     # 기본 요소들이 존재하는지 확인
     assert len(at.title) >= 1
-    assert "상품 검색 챗봇" in at.title[0].value
+    assert "AI Agent 챗봇" in at.title[0].value
     
     # 세션 상태 초기화 확인
     assert "messages" in at.session_state
