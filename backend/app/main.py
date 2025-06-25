@@ -93,15 +93,13 @@ async def general_exception_handler(request, exc):
 
 @app.get("/test")
 async def test_endpoint():
-    """PR 테스트용 엔드포인트"""
-    # 의도적 버그: 존재하지 않는 변수 참조
-    bug_variable = undefined_variable + " 버그 테스트"
-    
+    """테스트용 엔드포인트 - 버그 수정 완료"""
     return {
-        "message": "PR 테스트가 성공적으로 작동합니다!",
+        "message": "테스트 엔드포인트가 정상적으로 작동합니다!",
         "test": "GitHub Actions 자동화 테스트",
-        "branch": "main",
-        "bug_test": bug_variable
+        "branch": "fix/test-endpoint-undefined-variable",
+        "status": "버그 수정 완료",
+        "fixed_issue": "undefined_variable 참조 오류 해결"
     }
 
 

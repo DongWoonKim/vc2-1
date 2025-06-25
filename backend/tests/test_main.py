@@ -79,10 +79,11 @@ def test_health_endpoint():
 
 
 def test_pr_test_endpoint():
-    """PR 테스트 엔드포인트 테스트"""
+    """테스트 엔드포인트 테스트 - 버그 수정 확인"""
     response = client.get("/test")
     assert response.status_code == 200
     data = response.json()
-    assert "PR 테스트가 성공적으로 작동합니다!" in data["message"]
+    assert "테스트 엔드포인트가 정상적으로 작동합니다!" in data["message"]
     assert data["test"] == "GitHub Actions 자동화 테스트"
-    assert data["branch"] == "pr_test" 
+    assert data["status"] == "버그 수정 완료"
+    assert data["fixed_issue"] == "undefined_variable 참조 오류 해결" 
